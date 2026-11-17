@@ -1,0 +1,197 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwnerUid(uid) {
+      return isVerified() && request.auth.uid == uid;
+    }
+
+    function isValidDateString(val) {
+      return val is string && val.size() == 10 && val.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    // Entity Validation Blueprints
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'uid', 'displayName', 'title', 'email', 'phone',
+          'location', 'hourlyRate', 'currency', 'bio', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.email is string && data.email.size() >= 1 && data.email.size() <= 160
+        && (!('title' in data) || (data.title is string && data.title.size() <= 100))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
+        && (!('location' in data) || (data.location is string && data.location.size() <= 100))
+        && (!('hourlyRate' in data) || (data.hourlyRate is number && data.hourlyRate >= 0 && data.hourlyRate <= 1000000))
+        && (!('currency' in data) || (data.currency in ['TWD', 'USD', 'JPY', 'EUR']))
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 600))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'clientName', 'status', 'dueDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'name', 'clientName', 'status', 'dueDate', 'notes', 'createdAt', 'updatedAt'])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.clientName is string && data.clientName.size() >= 1 && data.clientName.size() <= 100
+        && data.status in ['in_progress', 'completed']
+        && isValidDateString(data.dueDate)
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['ownerId', 'title', 'status', 'dueDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'title', 'projectName', 'status', 'dueDate', 'createdAt', 'updatedAt'])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && (!('projectName' in data) || (data.projectName is string && data.projectName.size() <= 120))
+        && data.status in ['todo', 'completed']
+        && isValidDateString(data.dueDate)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWork(data) {
+      return data.keys().hasAll(['ownerId', 'title', 'clientName', 'category', 'hours', 'workDate', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'title', 'clientName', 'category', 'hours', 'workDate', 'notes', 'createdAt', 'updatedAt'])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+        && data.clientName is string && data.clientName.size() >= 1 && data.clientName.size() <= 100
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 60
+        && data.hours is number && data.hours >= 0 && data.hours <= 1000
+        && isValidDateString(data.workDate)
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 400))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // /users/{userId} - Private PII isolated to owner only; list explicitly disabled
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwnerUid(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwnerUid(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwnerUid(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'title', 'email', 'phone',
+          'location', 'hourlyRate', 'currency', 'bio', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // /projects/{projectId}
+    match /projects/{projectId} {
+      allow get: if isValidId(projectId) && isVerified() && existing().ownerId == request.auth.uid;
+      allow list: if isVerified() && resource.data.ownerId == request.auth.uid;
+      allow create: if isValidId(projectId)
+        && isVerified()
+        && isValidProject(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(projectId)
+        && isVerified()
+        && isValidProject(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Toggle project status
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          ||
+          // Action: Edit project details
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'clientName', 'status', 'dueDate', 'notes', 'updatedAt'])
+        );
+      allow delete: if isValidId(projectId) && isVerified() && existing().ownerId == request.auth.uid;
+    }
+
+    // /tasks/{taskId}
+    match /tasks/{taskId} {
+      allow get: if isValidId(taskId) && isVerified() && existing().ownerId == request.auth.uid;
+      allow list: if isVerified() && resource.data.ownerId == request.auth.uid;
+      allow create: if isValidId(taskId)
+        && isVerified()
+        && isValidTask(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(taskId)
+        && isVerified()
+        && isValidTask(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Toggle task completion status
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          ||
+          // Action: Edit task details
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'projectName', 'status', 'dueDate', 'updatedAt'])
+        );
+      allow delete: if isValidId(taskId) && isVerified() && existing().ownerId == request.auth.uid;
+    }
+
+    // /works/{workId}
+    match /works/{workId} {
+      allow get: if isValidId(workId) && isVerified() && existing().ownerId == request.auth.uid;
+      allow list: if isVerified() && resource.data.ownerId == request.auth.uid;
+      allow create: if isValidId(workId)
+        && isVerified()
+        && isValidWork(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(workId)
+        && isVerified()
+        && isValidWork(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'clientName', 'category', 'hours', 'workDate', 'notes', 'updatedAt'
+        ]);
+      allow delete: if isValidId(workId) && isVerified() && existing().ownerId == request.auth.uid;
+    }
+  }
+}

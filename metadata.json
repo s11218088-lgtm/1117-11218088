@@ -1,0 +1,8 @@
+{
+  "name": "接案工作台 CraftDesk",
+  "description": "專為自由接案工作者打造的現代化專案、任務、工作與個人資料管理儀表板，串接 Firebase Firestore 即時同步。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

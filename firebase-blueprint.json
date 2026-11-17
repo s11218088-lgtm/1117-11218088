@@ -1,0 +1,240 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Freelancer personal profile and workspace preferences stored per authenticated user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Freelancer display name."
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Professional title or specialty."
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Contact email address."
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Contact phone number."
+        },
+        "location": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "City or timezone."
+        },
+        "hourlyRate": {
+          "type": "number",
+          "description": "Standard hourly billing rate."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["TWD", "USD", "JPY", "EUR"],
+          "description": "Preferred billing currency."
+        },
+        "bio": {
+          "type": "string",
+          "maxLength": 600,
+          "description": "Short professional bio."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A freelance client project tracked in the workspace.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Project name."
+        },
+        "clientName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Client or company name."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["in_progress", "completed"],
+          "description": "Project status."
+        },
+        "dueDate": {
+          "type": "string",
+          "maxLength": 20,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Project deadline in YYYY-MM-DD format."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional project scope or notes."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last updated timestamp."
+        }
+      },
+      "required": ["ownerId", "name", "clientName", "status", "dueDate", "createdAt", "updatedAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "An actionable freelance task with due date and completion status.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140,
+          "description": "Task title."
+        },
+        "projectName": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Optional associated project name."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["todo", "completed"],
+          "description": "Task completion status."
+        },
+        "dueDate": {
+          "type": "string",
+          "maxLength": 20,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Task due date in YYYY-MM-DD format."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last updated timestamp."
+        }
+      },
+      "required": ["ownerId", "title", "status", "dueDate", "createdAt", "updatedAt"]
+    },
+    "WorkEntry": {
+      "title": "WorkEntry",
+      "description": "A logged freelance work session or client engagement item.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Work item title."
+        },
+        "clientName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Client name for this work."
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Work category such as UI/UX, 開發, 顧問."
+        },
+        "hours": {
+          "type": "number",
+          "description": "Logged work hours."
+        },
+        "workDate": {
+          "type": "string",
+          "maxLength": 20,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Date of work in YYYY-MM-DD format."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Optional work details."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last updated timestamp."
+        }
+      },
+      "required": ["ownerId", "title", "clientName", "category", "hours", "workDate", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private freelancer profile document owned by userId."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Freelance projects owned by an authenticated freelancer."
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Freelance tasks owned by an authenticated freelancer."
+    },
+    "/works/{workId}": {
+      "schema": { "$ref": "#/entities/WorkEntry" },
+      "description": "Logged freelance work entries and client engagements owned by an authenticated freelancer."
+    }
+  }
+}
